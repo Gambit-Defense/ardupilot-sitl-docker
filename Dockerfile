@@ -51,17 +51,18 @@ EXPOSE 5760/tcp
 
 # Variables for simulator
 ENV INSTANCE 0
-ENV LAT 42.3898
-ENV LON -71.1476
+ENV LAT 41.85168964779279
+ENV LON -87.82930967212852
 ENV ALT 14
 ENV DIR 270
 ENV MODEL +
 ENV SPEEDUP 1
 ENV VEHICLE ArduCopter
+ENV COUNT 1
 
 #install maxproxy
 RUN python3 -m pip install PyYAML mavproxy --user
 ENV PATH="${PATH}:/home/atlas/.local/bin"
 
 # Finally the command
-ENTRYPOINT Tools/autotest/sim_vehicle.py --vehicle ${VEHICLE} -I${INSTANCE} --custom-location=${LAT},${LON},${ALT},${DIR} -w --frame ${MODEL} --no-rebuild --speedup ${SPEEDUP}
+ENTRYPOINT Tools/autotest/sim_vehicle.py --vehicle ${VEHICLE} -I ${INSTANCE} --count ${COUNT} --auto-sysid --custom-location=${LAT},${LON},${ALT},${DIR} --auto-offset-line 90,10 -w --frame ${MODEL} --no-rebuild

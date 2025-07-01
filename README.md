@@ -40,17 +40,13 @@ If you'd rather build the docker image yourself:
 You can now use the `--build-arg` option to specify which branch or tag in the ardupilot
 repository you'd like to use. Here's an example:
 
-`docker build --tag ardupilot --build-arg COPTER_TAG=Copter-4.0.1_sitl_docker .`
+`docker build --tag ardupilot_sitl_docker --build-arg COPTER_TAG=Copter-4.0.1_sitl_docker .`
 
 If no COPTER_TAG is supplied, the build will use the default defined in the Dockerfile, currently set at Copter-4.0.3
 
 To run the image:
 
-`docker run -it --rm -p 5760:5760 ardupilot`
-
-This will start an ArduCopter SITL on host TCP port 5760, so to connect to it from the host, you could:
-
-`mavproxy.py --master=tcp:localhost:5760`
+`docker run -it --rm --network host ardupilot_sitl_docker`
 
 Options
 -------
