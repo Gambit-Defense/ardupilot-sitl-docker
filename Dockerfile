@@ -64,5 +64,9 @@ ENV COUNT=1
 RUN python3 -m pip install PyYAML mavproxy --user
 ENV PATH="${PATH}:/home/atlas/.local/bin"
 
-# Finally the command
-ENTRYPOINT Tools/autotest/sim_vehicle.py --vehicle ${VEHICLE} --map --count 2 --auto-offset-line 0,10 --auto-sysid -I${INSTANCE} --custom-location=${LAT},${LON},${ALT},${DIR} -w --frame ${MODEL} --no-rebuild --speedup ${SPEEDUP}
+#spin up simulation
+COPY entrypoint.sh /usr/local/bin/entrypoint.sh
+RUN sudo chmod +x /usr/local/bin/entrypoint.sh
+
+# drop the old ENTRYPOINT, and use our script instead:
+ENTRYPOINT ["/usr/local/bin/entrypoint.sh"] 
