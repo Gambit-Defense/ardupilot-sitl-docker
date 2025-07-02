@@ -59,6 +59,18 @@ To run the image:
 
 `docker run -it --rm --network host ardupilot_sitl_docker`
 
+Building and Pushing to GHCR
+----------------------------
+
+Building
+
+`docker build --tag ghcr.io/gambit-defense/ardupilot-sitl-docker .`
+
+Pushing to GHCR
+
+`docker push ghcr.io/gambit-defense/ardupilot-sitl-docker:latest`
+
+
 Options
 -------
 
