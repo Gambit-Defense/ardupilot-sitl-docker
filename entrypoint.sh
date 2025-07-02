@@ -15,14 +15,15 @@ if [[ $# -ge 1 ]]; then
   echo "↪ Overriding COUNT → $COUNT"
 fi
 
-# tweak default params file
+# tweak default params file (prevent high throttle error)
 FILE=/home/atlas/ardupilot/Tools/autotest/default_params/copter.parm
 if [ -f "$FILE" ]; then
-  echo "▶ Setting RC_OPTIONS to 0 in $FILE"
-  sed -i 's/^\(RC_OPTIONS\s*\).*/\10/' "$FILE"
+  echo "▶ Appending RC_OPTIONS (with tab) to $FILE"
+  printf 'RC_OPTIONS\t0\n' >> "$FILE"
 else
-  echo "⚠ copter.parm not found at $FILE; skipping edit"
+  echo "⚠ copter.parm not found at $FILE; skipping append"
 fi
+
 
 # build the “always include” args
 args=(
