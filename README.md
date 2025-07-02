@@ -5,6 +5,17 @@ The purpose of this is to run an ArduPilot SITL from within Docker.
 
 This is based on adarku SITL docker implementation
 
+Running
+---------
+
+Pull Down
+
+`docker pull ghcr.io/gambit-defense/ardupilot-sitl-docker:latest`
+
+Run
+
+`docker run -it --rm ghcr.io/gambit-defense/ardupilot-sitl-docker:latest`
+
 ⚠️ **DEPRECATED:** This section is obsolete and no longer maintained.: 
 DockerHub
 ---------
