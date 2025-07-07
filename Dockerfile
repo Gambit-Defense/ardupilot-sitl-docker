@@ -59,7 +59,7 @@ ENV MODEL=+
 ENV SPEEDUP=1
 ENV VEHICLE=ArduCopter
 ENV COUNT=1
-ENV VEHICLE_TYPE=iris
+ENV VEHICLE_TYPE=copter
 
 #install maxproxy
 RUN python3 -m pip install PyYAML mavproxy --user
