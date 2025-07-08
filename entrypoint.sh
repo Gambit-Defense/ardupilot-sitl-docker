@@ -40,7 +40,7 @@ LON="${LON:-0}"
 ALT="${ALT:-0}"
 DIR="${DIR:-0}"
 SPEEDUP="${SPEEDUP:-1}"
-INSTANCE="${INSTANCE:-0}"
+INSTANCE="${INSTANCE:-1}"
 
 # 4) Select VEHICLE + FRAME
 case "$model" in
@@ -53,22 +53,26 @@ esac
 # 5) Build sim_vehicle.py args
 args=(
   --vehicle         "${VEH}"
-  -I"${INSTANCE}"
+  -I$INSTANCE
   --custom-location "${LAT},${LON},${ALT},${DIR}"
   --frame           "${FRAME}"
   --no-rebuild
   --speedup         "${SPEEDUP}"
-  --out             "udp:127.0.0.1:$((14550 + INSTANCE))"
   --console
 )
 
 if [ "$count" -gt 1 ]; then
-  args+=( 
+  args+=(
     --auto-offset-line 0,10
-    --auto-sysid
     --count "$count"
   )
+else
+  SYSID=$((INSTANCE + 1))
+  args+=(
+    --sysid "$SYSID"
+  )
 fi
+
 
 # 6) Launch sim
 echo "▶ Running: sim_vehicle.py ${args[*]}"
