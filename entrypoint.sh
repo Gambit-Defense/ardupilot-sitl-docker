@@ -58,7 +58,6 @@ args=(
   --frame           "${FRAME}"
   --no-rebuild
   --speedup         "${SPEEDUP}"
-  --console
 )
 
 if [ "$count" -gt 1 ]; then
