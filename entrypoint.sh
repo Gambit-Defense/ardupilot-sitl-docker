@@ -64,6 +64,7 @@ if [ "$count" -gt 1 ]; then
   args+=(
     --auto-offset-line 0,10
     --count "$count"
+    --auto-sysid
   )
 else
   SYSID=$((INSTANCE + 1))
