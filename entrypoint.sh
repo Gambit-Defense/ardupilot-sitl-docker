@@ -46,8 +46,8 @@ INSTANCE="${INSTANCE:-1}"
 case "$model" in
   copter)     VEH="ArduCopter"; FRAME="+" ;;
   rover)      VEH="Rover";      FRAME="rover" ;;
-  plane_fw)   VEH="ArduPlane";  FRAME="plane" ;;
-  plane_vtol) VEH="ArduPlane";  FRAME="quadplane" ;;
+  plane)   VEH="ArduPlane";  FRAME="plane" ;;
+  quadplane) VEH="ArduPlane";  FRAME="quadplane" ;;
 esac
 
 # 5) Build sim_vehicle.py args
