@@ -29,8 +29,14 @@ echo
 if [ "$model" = "copter" ]; then
   FILE=/home/atlas/ardupilot/Tools/autotest/default_params/copter.parm
   if [ -f "$FILE" ]; then
-    echo "▶ Appending RC_OPTIONS to $FILE"
+    echo "▶ Setting RC_OPTIONS=0 in $FILE"
     grep -q "^RC_OPTIONS" "$FILE" || printf 'RC_OPTIONS\t0\n' >> "$FILE"
+  fi
+elif [ "$model" = "plane_fw" ] || [ "$model" = "plane_vtol" ]; then
+  FILE=/home/atlas/ardupilot/Tools/autotest/default_params/plane.parm
+  if [ -f "$FILE" ]; then
+    echo "▶ Setting BATT_MONITOR=4 in $FILE"
+    grep -q "^BATT_MONITOR" "$FILE" || printf 'BATT_MONITOR\t4\n' >> "$FILE"
   fi
 fi
 
