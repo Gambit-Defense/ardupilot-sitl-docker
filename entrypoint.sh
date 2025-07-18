@@ -11,7 +11,7 @@ fi
 model="${VEHICLES%%:*}"
 count="${VEHICLES##*:}"
 
-SUPPORTED=(copter rover plane quadplane)
+SUPPORTED=(copter rover plane_fw plane_vtol)
 if [[ ! " ${SUPPORTED[*]} " =~ " ${model} " ]]; then
   echo "Error: Unsupported model '$model' (must be one of ${SUPPORTED[*]})"
   exit 1
@@ -48,8 +48,8 @@ INSTANCE="${INSTANCE:-1}"
 case "$model" in
   copter)     VEH="ArduCopter"; FRAME="+" ;;
   rover)      VEH="Rover";      FRAME="rover" ;;
-  plane)   VEH="ArduPlane";  FRAME="plane" ;;
-  quadplane) VEH="ArduPlane";  FRAME="quadplane" ;;
+  plane_fw)   VEH="ArduPlane";  FRAME="plane" ;;
+  plane_vtol) VEH="ArduPlane";  FRAME="quadplane" ;;
 esac
 
 # 5) Build sim_vehicle.py args
