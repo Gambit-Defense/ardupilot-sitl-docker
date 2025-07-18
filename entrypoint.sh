@@ -11,7 +11,7 @@ fi
 model="${VEHICLES%%:*}"
 count="${VEHICLES##*:}"
 
-SUPPORTED=(copter rover plane_fw plane_vtol)
+SUPPORTED=(copter rover plane quadplane)
 if [[ ! " ${SUPPORTED[*]} " =~ " ${model} " ]]; then
   echo "Error: Unsupported model '$model' (must be one of ${SUPPORTED[*]})"
   exit 1
@@ -33,6 +33,8 @@ if [ "$model" = "copter" ]; then
     grep -q "^RC_OPTIONS" "$FILE" || printf 'RC_OPTIONS\t0\n' >> "$FILE"
   fi
 fi
+
+export VEHICLE_TYPE="$model"
 
 # 3) Defaults
 LAT="${LAT:-0}"
