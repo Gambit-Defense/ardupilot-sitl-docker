@@ -37,6 +37,8 @@ elif [ "$model" = "plane_fw" ] || [ "$model" = "plane_vtol" ]; then
   if [ -f "$FILE" ]; then
     echo "▶ Setting BATT_MONITOR=4 in $FILE"
     grep -q "^BATT_MONITOR" "$FILE" || printf 'BATT_MONITOR\t4\n' >> "$FILE"
+    echo "▶ Setting Q_RTL_MODE=1 in $FILE"
+    grep -q "^Q_RTL_MODE" "$FILE" || printf 'Q_RTL_MODE\t1\n' >> "$FILE"
   fi
 fi
 
