@@ -31,6 +31,8 @@ if [ "$model" = "copter" ]; then
   if [ -f "$FILE" ]; then
     echo "▶ Setting RC_OPTIONS=0 in $FILE"
     grep -q "^RC_OPTIONS" "$FILE" || printf 'RC_OPTIONS\t0\n' >> "$FILE"
+    echo "▶ Setting AUTO_OPTIONS=1 in $FILE"
+    grep -q "^AUTO_OPTIONS" "$FILE" || printf 'AUTO_OPTIONS\t1\n' >> "$FILE"
   fi
 elif [ "$model" = "plane_fw" ] || [ "$model" = "plane_vtol" ]; then
   FILE=/home/atlas/ardupilot/Tools/autotest/default_params/plane.parm
