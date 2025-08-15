@@ -35,7 +35,7 @@ if [ "$model" = "copter" ]; then
     grep -q "^AUTO_OPTIONS" "$FILE" || printf 'AUTO_OPTIONS\t1\n' >> "$FILE"
   fi
 elif [ "$model" = "plane_fw" ]; then
-  FILE=/home/atlas/ardupilot/Tools/autotest/default_params/plane.parm
+  FILE=/home/atlas/ardupilot/Tools/autotest/models/plane.parm
   if [ -f "$FILE" ]; then
     echo "▶ Setting BATT_MONITOR=4 in $FILE"
     grep -q "^BATT_MONITOR" "$FILE" || printf 'BATT_MONITOR\t4\n' >> "$FILE"
