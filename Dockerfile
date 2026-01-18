@@ -1,8 +1,8 @@
 FROM ubuntu:20.04
 
-ARG COPTER_TAG=ArduPilot-4.6
+ARG VERSION_TAG=ArduPilot-4.6
 
-# install git 
+# Install git 
 RUN apt-get update && apt-get install -y git; git config --global url."https://github.com/".insteadOf git://github.com/
 
 # Trick to get apt-get to not prompt for timezone in tzdata
@@ -17,7 +17,7 @@ RUN useradd --create-home --shell /bin/bash atlas \
  && usermod -aG sudo atlas \
  && echo 'atlas ALL=(ALL) NOPASSWD:ALL' >> /etc/sudoers
 
- # Trick to get keyboard selection to not come up
+# Trick to get keyboard selection to not come up
 RUN echo 'keyboard-configuration  keyboard-configuration/layoutcode select us' | sudo debconf-set-selections && \
 echo 'keyboard-configuration  keyboard-configuration/modelcode select pc105' | sudo debconf-set-selections && \
 sudo apt-get install keyboard-configuration -y
@@ -25,12 +25,12 @@ sudo apt-get install keyboard-configuration -y
 USER atlas
 WORKDIR /home/atlas
 
-# Now grab ArduPilot from GitHub
+# Clone ArduPilot from GitHub
 RUN git clone https://github.com/ArduPilot/ardupilot.git ardupilot
 WORKDIR /home/atlas/ardupilot
 
-# Checkout the latest Copter...
-RUN git checkout ${COPTER_TAG}
+# Checkout the desired version
+RUN git checkout ${VERSION_TAG}
 
 # Now start build instructions from http://ardupilot.org/dev/docs/setting-up-sitl-on-linux.html
 RUN git submodule update --init --recursive
@@ -49,7 +49,7 @@ RUN ./waf sub
 # TCP 5760 is what the sim exposes by default
 EXPOSE 5760/tcp
 
-# Variables for simulator
+# Default variables for simulator
 ENV INSTANCE=0
 ENV LAT=41.85168964779279
 ENV LON=-87.82930967212852
@@ -62,13 +62,13 @@ ENV COUNT=1
 ENV VEHICLE_TYPE=copter
 ENV OFFSET=10
 
-#install maxproxy
+# Install mavproxy
 RUN python3 -m pip install PyYAML mavproxy --user
 ENV PATH="${PATH}:/home/atlas/.local/bin"
 
-#spin up simulation
+# Add entrypoint script
 COPY entrypoint.sh /usr/local/bin/entrypoint.sh
 RUN sudo chmod +x /usr/local/bin/entrypoint.sh
 
-# drop the old ENTRYPOINT, and use our script instead:
+# Drop the default ENTRYPOINT, and use our script instead
 ENTRYPOINT ["/usr/local/bin/entrypoint.sh"] 

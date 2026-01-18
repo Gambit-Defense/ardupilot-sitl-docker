@@ -25,7 +25,7 @@ echo "↪ Spawning $count × $model"
 echo "   • Location = ${LAT:-0},${LON:-0},${ALT:-0},${DIR:-0}"
 echo
 
-# 2) Tweak copter params if needed
+# 2) Tweak params if needed
 if [ "$model" = "copter" ]; then
   FILE=/home/atlas/ardupilot/Tools/autotest/default_params/copter.parm
   if [ -f "$FILE" ]; then
@@ -39,16 +39,26 @@ elif [ "$model" = "plane_fw" ]; then
   if [ -f "$FILE" ]; then
     echo "▶ Setting BATT_MONITOR=4 in $FILE"
     grep -q "^BATT_MONITOR" "$FILE" || printf 'BATT_MONITOR\t4\n' >> "$FILE"
-    echo "▶ Setting Q_RTL_MODE=1 in $FILE"
-    grep -q "^Q_RTL_MODE" "$FILE" || printf 'Q_RTL_MODE\t1\n' >> "$FILE"
+    echo "▶ Setting RC_OPTIONS=0 in $FILE"
+    grep -q "^RC_OPTIONS" "$FILE" || printf 'RC_OPTIONS\t0\n' >> "$FILE"
+    echo "▶ Setting THR_FAILSAFE=0 in $FILE"
+    grep -q "^THR_FAILSAFE" "$FILE" || printf 'THR_FAILSAFE\t0\n' >> "$FILE"
+    echo "▶ Setting RTL_AUTOLAND=2 in $FILE"
+    grep -q "^RTL_AUTOLAND" "$FILE" || printf 'RTL_AUTOLAND\t2\n' >> "$FILE"
   fi
 elif [ "$model" = "plane_vtol" ]; then
   FILE=/home/atlas/ardupilot/Tools/autotest/default_params/quadplane.parm
   if [ -f "$FILE" ]; then
     echo "▶ Setting BATT_MONITOR=4 in $FILE"
     grep -q "^BATT_MONITOR" "$FILE" || printf 'BATT_MONITOR\t4\n' >> "$FILE"
+    echo "▶ Setting RC_OPTIONS=0 in $FILE"
+    grep -q "^RC_OPTIONS" "$FILE" || printf 'RC_OPTIONS\t0\n' >> "$FILE"
+    echo "▶ Setting THR_FAILSAFE=0 in $FILE"
+    grep -q "^THR_FAILSAFE" "$FILE" || printf 'THR_FAILSAFE\t0\n' >> "$FILE"
     echo "▶ Setting Q_RTL_MODE=1 in $FILE"
     grep -q "^Q_RTL_MODE" "$FILE" || printf 'Q_RTL_MODE\t1\n' >> "$FILE"
+    echo "▶ Setting RTL_AUTOLAND=2 in $FILE"
+    grep -q "^RTL_AUTOLAND" "$FILE" || printf 'RTL_AUTOLAND\t2\n' >> "$FILE"
   fi
 fi
 
