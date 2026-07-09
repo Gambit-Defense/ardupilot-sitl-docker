@@ -6,14 +6,15 @@ platform: { os: linux, arch: amd64 }
 
 steps:
   - name: kaniko-build
-    image: harbor.gambitcmmc.internal/tools/kaniko-executor:latest
+    image: harbor.gambitcmmc.internal/tools/kaniko-executor:debug
     volumes:
       - name: dockerconfig
         path: /kaniko/.docker
     commands:
+      - DF=$(find /drone/src -name Dockerfile -not -path "*/generated/*" -not -path "*/.*" | sort | head -1); echo "using $DF"
       - /kaniko/executor
         --context=dir:///drone/src
-        --dockerfile=/drone/src/Dockerfile
+        --dockerfile=$DF
         --destination=harbor.gambitcmmc.internal/drones/${DRONE_REPO_NAME}:${DRONE_COMMIT_SHA:0:8}
         --destination=harbor.gambitcmmc.internal/drones/${DRONE_REPO_NAME}:latest
         --build-arg=NEXUS_HOST=nexus.gambitcmmc.internal:32400
