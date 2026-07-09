@@ -1,0 +1,73 @@
+kind: pipeline
+type: kubernetes
+name: build-amd64
+
+platform: { os: linux, arch: amd64 }
+
+steps:
+  - name: kaniko-build
+    image: harbor.gambitcmmc.internal/tools/kaniko-executor:latest
+    volumes:
+      - name: dockerconfig
+        path: /kaniko/.docker
+    commands:
+      - /kaniko/executor
+        --context=dir:///drone/src
+        --dockerfile=/drone/src/Dockerfile
+        --destination=harbor.gambitcmmc.internal/drones/${DRONE_REPO_NAME}:${DRONE_COMMIT_SHA:0:8}
+        --destination=harbor.gambitcmmc.internal/drones/${DRONE_REPO_NAME}:latest
+        --build-arg=NEXUS_HOST=nexus.gambitcmmc.internal:32400
+        --cache=true
+        --cache-repo=harbor.gambitcmmc.internal/drones/${DRONE_REPO_NAME}/cache
+
+  - name: sbom
+    image: registry.gambitcmmc.internal:30500/anchore/syft:latest
+    commands:
+      - syft harbor.gambitcmmc.internal/drones/${DRONE_REPO_NAME}:${DRONE_COMMIT_SHA:0:8} -o cyclonedx-json=sbom.cdx.json
+    depends_on: [kaniko-build]
+
+  - name: attest-sbom
+    image: registry.gambitcmmc.internal:30500/bitnami/cosign:latest
+    environment:
+      COSIGN_KEY: { from_secret: cosign_key }
+      COSIGN_PASSWORD: { from_secret: cosign_password }
+      HARBOR_USER: { from_secret: harbor_username }
+      HARBOR_PASS: { from_secret: harbor_password }
+    commands:
+      - echo "$COSIGN_KEY" > /tmp/cosign.key
+      - cosign login harbor.gambitcmmc.internal -u "$HARBOR_USER" -p "$HARBOR_PASS"
+      - cosign attest --key /tmp/cosign.key --yes --type cyclonedx --predicate sbom.cdx.json harbor.gambitcmmc.internal/drones/${DRONE_REPO_NAME}:${DRONE_COMMIT_SHA:0:8}
+      - rm -f /tmp/cosign.key
+    depends_on: [sbom]
+
+  - name: vuln-scan
+    image: registry.gambitcmmc.internal:30500/aquasec/trivy:latest
+    commands:
+      - trivy image --scanners vuln,secret --exit-code 1 --severity CRITICAL --ignore-unfixed harbor.gambitcmmc.internal/drones/${DRONE_REPO_NAME}:${DRONE_COMMIT_SHA:0:8}
+    depends_on: [kaniko-build]
+
+  - name: sign
+    image: registry.gambitcmmc.internal:30500/bitnami/cosign:latest
+    environment:
+      COSIGN_KEY: { from_secret: cosign_key }
+      COSIGN_PASSWORD: { from_secret: cosign_password }
+      HARBOR_USER: { from_secret: harbor_username }
+      HARBOR_PASS: { from_secret: harbor_password }
+    commands:
+      - echo "$COSIGN_KEY" > /tmp/cosign.key
+      - cosign login harbor.gambitcmmc.internal -u "$HARBOR_USER" -p "$HARBOR_PASS"
+      - cosign sign --key /tmp/cosign.key --yes harbor.gambitcmmc.internal/drones/${DRONE_REPO_NAME}:${DRONE_COMMIT_SHA:0:8}
+      - rm -f /tmp/cosign.key
+    depends_on: [attest-sbom, vuln-scan]
+
+volumes:
+  - name: dockerconfig
+    secret:
+      secretName: harbor-dockerconfig
+      items:
+        - key: .dockerconfigjson
+          path: config.json
+
+trigger:
+  branch: [main, develop]
+  event: [push, tag, cron]
