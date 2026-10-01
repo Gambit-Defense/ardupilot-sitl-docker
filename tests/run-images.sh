@@ -9,7 +9,7 @@ if [ "$#" -eq 0 ]; then
     set -- copter rover plane quadplane
 fi
 stock_image=ghcr.io/gambit-defense/ardupilot-sitl-docker@sha256:2293013214ff601d07f72e2f0cff93ea385bb65b3fe7cd384e4678e96d8943eb
-patched_image=${PATCHED_SITL_IMAGE:-local/core3756-apm:20260929}
+patched_image=${PATCHED_SITL_IMAGE:-local/ardupilot-sitl:battery-power}
 active_container=
 status=0
 
@@ -37,7 +37,7 @@ for vehicle in "$@"; do
             check_args=(--expect-cutoff)
         fi
         active_container=$(docker run -dit --network none \
-            --name "core3756-apm-$$-$variant-$vehicle" \
+            --name "battery-power-apm-$$-$variant-$vehicle" \
             -e "VEHICLES=$launcher_vehicle:1" -e INSTANCE=0 -e SPEEDUP=5 \
             -e LAT=47.397742 -e LON=8.545594 -e ALT=488 -e DIR=0 \
             --mount "type=bind,src=$tests_dir,dst=/cutoff,readonly" "$image")

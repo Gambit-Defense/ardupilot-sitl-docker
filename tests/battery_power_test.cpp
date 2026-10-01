@@ -49,12 +49,19 @@ static void check_frame(const char *frame, unsigned motor_mask, uint16_t off_pwm
 // Invalid accounting must not change the last valid power state.
 static void invalid_samples(HALSITL::BatteryPower &power)
 {
-    power.update(false, 1000, 0.f);
-    power.update(true, 0, 0.f);
-    power.update(true, -1, 0.f);
-    power.update(true, 1000, -1.f);
-    power.update(true, 1000, std::numeric_limits<float>::quiet_NaN());
-    power.update(true, 1000, std::numeric_limits<float>::infinity());
+    uint16_t servos[16] = {};
+    const bool depleted = power.apply(servos, "+");
+    // Check each invalid sample preserves the state that preceded it.
+    const auto check = [&](bool healthy, int32_t capacity_mah, float consumed_mah) {
+        power.update(healthy, capacity_mah, consumed_mah);
+        assert(power.apply(servos, "+") == depleted);
+    };
+    check(false, 1000, 0.f);
+    check(true, 0, 0.f);
+    check(true, -1, 0.f);
+    check(true, 1000, -1.f);
+    check(true, 1000, std::numeric_limits<float>::quiet_NaN());
+    check(true, 1000, std::numeric_limits<float>::infinity());
 }
 
 // Exercise supported propulsion mappings and invalid or missing battery accounting.

@@ -7,7 +7,19 @@ import time
 
 from pymavlink import mavutil
 
-from flight_battery_cutoff import command
+
+def command(link, command_id, *parameters):
+    """Send a command and require its successful acknowledgement."""
+    values = list(parameters) + [0] * (7 - len(parameters))
+    link.mav.command_long_send(1, 1, command_id, 0, *values)
+    deadline = time.monotonic() + 5
+    while time.monotonic() < deadline:
+        ack = link.recv_match(type="COMMAND_ACK", blocking=True, timeout=1)
+        if ack and ack.command == command_id:
+            assert ack.result == mavutil.mavlink.MAV_RESULT_ACCEPTED, "%s: %s" % (
+                ack, link.messages.get("STATUSTEXT"))
+            return
+    raise AssertionError("No acknowledgement for command %s" % command_id)
 
 
 def parameter(link, name, value=None):
