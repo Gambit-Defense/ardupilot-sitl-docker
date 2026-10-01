@@ -35,6 +35,11 @@ RUN git checkout ${VERSION_TAG}
 # Now start build instructions from http://ardupilot.org/dev/docs/setting-up-sitl-on-linux.html
 RUN git submodule update --init --recursive
 
+# Enforce simulated battery depletion before compiling the SITL binaries.
+COPY --chown=atlas:atlas battery-power.patch /tmp/battery-power.patch
+COPY --chown=atlas:atlas BatteryPower.h libraries/AP_HAL_SITL/BatteryPower.h
+RUN git apply --check /tmp/battery-power.patch && git apply /tmp/battery-power.patch
+
 # Install all prerequisites now
 RUN USER=atlas DEBIAN_FRONTEND=noninteractive Tools/environment_install/install-prereqs-ubuntu.sh -y
 

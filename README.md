@@ -3,6 +3,9 @@ ArduPilot Software-in-the-Loop Simulator Docker Container
 
 The purpose of this is to run an ArduPilot SITL from within Docker.
 
+See [simulated battery power](BATTERY_POWER.md) for supported vehicle frames,
+depletion behavior, reset semantics, and regression checks.
+
 This is based on adarku SITL docker implementation
 
 Running

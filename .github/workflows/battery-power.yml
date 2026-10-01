@@ -1,0 +1,27 @@
+name: Battery power
+
+on:
+  pull_request:
+  push:
+    branches: [master]
+
+permissions:
+  contents: read
+
+jobs:
+  battery-power:
+    name: Run checks
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Check battery power behavior
+        run: bash tests/run.sh
+      - name: Check test script syntax
+        run: |
+          bash -n tests/run.sh tests/run-images.sh
+          python3 - <<'PY'
+          import ast
+          from pathlib import Path
+          for path in Path("tests").glob("*.py"):
+              ast.parse(path.read_text(), filename=str(path))
+          PY

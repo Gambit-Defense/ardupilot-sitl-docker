@@ -1,0 +1,2 @@
+# Unified-diff context prefixes are patch syntax, not source indentation.
+battery-power.patch whitespace=-blank-at-eol,-space-before-tab

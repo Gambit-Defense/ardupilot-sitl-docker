@@ -1,0 +1,10 @@
+# Build the local cutoff against the pinned, published SITL image and its toolchain.
+FROM ghcr.io/gambit-defense/ardupilot-sitl-docker@sha256:2293013214ff601d07f72e2f0cff93ea385bb65b3fe7cd384e4678e96d8943eb
+
+WORKDIR /home/atlas/ardupilot
+COPY --chown=atlas:atlas battery-power.patch /tmp/battery-power.patch
+COPY --chown=atlas:atlas BatteryPower.h libraries/AP_HAL_SITL/BatteryPower.h
+RUN test "$(git rev-parse HEAD)" = 12a6efea39425b084234551355470341f71f79d4 && \
+    git apply --check /tmp/battery-power.patch && \
+    git apply /tmp/battery-power.patch && \
+    ./waf copter rover plane sub -j4
