@@ -1,6 +1,6 @@
 # Simulated battery power
 
-The SITL build includes a propulsion cutoff for CORE-3756. A healthy primary
+The SITL build includes a battery-based propulsion cutoff. A healthy primary
 battery monitor with positive `BATT_CAPACITY` and finite, nonnegative consumed
 mAh disables propulsion below 0.1% remaining charge. The percentage is computed
 from capacity and consumed mAh without rounding to the MAVLink integer display.
