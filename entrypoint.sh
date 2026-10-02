@@ -21,6 +21,32 @@ if ! [[ "$count" =~ ^[1-9][0-9]*$ ]]; then
   exit 1
 fi
 
+# Select finite physical capacity before changing parameters or launching SITL.
+COPTER_FRAME=/usr/local/share/ardupilot/copter-frame.json
+if [ "$model" = "copter" ] && [ -n "${BATTERY_CAPACITY_MAH:-}" ]; then
+  capacity_ah=$(python3 - "$BATTERY_CAPACITY_MAH" <<'PY'
+import math
+import struct
+import sys
+
+try:
+    capacity = float(sys.argv[1])
+except ValueError:
+    raise SystemExit("BATTERY_CAPACITY_MAH must be a finite number greater than 10")
+if not math.isfinite(capacity) or not 10 < capacity <= 2**31 - 1:
+    raise SystemExit("BATTERY_CAPACITY_MAH must be greater than 10 and fit BATT_CAPACITY (int32)")
+# The frame stores Ah as float32 before converting back to the int32 mAh default.
+physical_ah = struct.unpack("f", struct.pack("f", capacity / 1000))[0]
+reported_mah = struct.unpack("f", struct.pack("f", physical_ah * 1000))[0]
+if reported_mah >= 2**31:
+    raise SystemExit("BATTERY_CAPACITY_MAH rounds outside BATT_CAPACITY (int32)")
+print(capacity / 1000)
+PY
+  )
+  COPTER_FRAME=$(mktemp /tmp/copter-frame-XXXXXX.json)
+  printf '{"battCapacityAh": %s}\n' "$capacity_ah" > "$COPTER_FRAME"
+fi
+
 echo "↪ Spawning $count × $model"
 echo "   • Location = ${LAT:-0},${LON:-0},${ALT:-0},${DIR:-0}"
 echo
@@ -89,6 +115,21 @@ args=(
   --no-rebuild
   --speedup         "${SPEEDUP}"
 )
+
+if [ "$model" = "copter" ]; then
+  # SITL strips leading '/' from paths. Grouped instances run one directory
+  # below the launch directory; use a relative model path from either layout.
+  model_path=$(python3 - "$COPTER_FRAME" "$count" <<'PY'
+import os
+import sys
+
+base = os.getcwd() if int(sys.argv[2]) == 1 else os.path.join(os.getcwd(), "0")
+print(os.path.relpath(sys.argv[1], base))
+PY
+  )
+  # Keep '+' frame defaults (including copter.parm) while selecting the model.
+  args+=(--model "+:${model_path}")
+fi
 
 if [ "$count" -gt 1 ]; then
   args+=(

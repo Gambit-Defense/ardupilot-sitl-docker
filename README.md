@@ -123,3 +123,27 @@ ArduPlane: gazebo-zephyr|CRRCSim|last_letter|plane-
     tailsitter|plane-dspoilers|quadplane-tri
     |quadplane-cl84|jsbsim
 ```
+
+Copter battery capacity
+-----------------------
+
+Copter instances use `copter-frame.json` through ArduPilot's `+:<path>.json`
+model syntax, retaining `--frame +` and the stock copter parameter defaults.
+The model path is relative to each SITL instance directory. Its default physical capacity is 3.3 Ah, which also supplies the
+3,300 mAh default reported capacity. `BATTERY_CAPACITY_MAH` overrides both;
+for example, `-e VEHICLES=copter:2 -e BATTERY_CAPACITY_MAH=6600` starts two copters
+with 6.6 Ah each. The override must be finite, greater than 10 mAh, and fit a
+signed 32-bit reported capacity after conversion. CONGO passes its
+`--battery-capacity-mah` option to this environment
+variable while retaining its Neuron parameter override.
+
+ArduPilot's existing battery and motor physics reduce thrust as voltage drops
+and remove thrust below the motor model's voltage cutoff. Physical loss of
+lift can precede displayed 0% charge. Normal low-battery failsafes may land the
+vehicle first. Firmware source, other vehicle frames, and network links are
+unchanged. Recovery requires restarting the affected simulation; no live
+recharge control is provided.
+
+With Bash and Python 3 available, run `bash tests/run-checks.sh`.
+These checks exercise capacity conversion and launch
+arguments without starting SITL. Flight behavior requires a built SITL image.
