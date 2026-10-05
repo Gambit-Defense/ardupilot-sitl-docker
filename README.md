@@ -136,6 +136,8 @@ with 6.6 Ah each. The override must be finite, greater than 10 mAh, and fit a
 signed 32-bit reported capacity after conversion. CONGO passes its
 `--battery-capacity-mah` option to this environment
 variable while retaining its Neuron parameter override.
+The entrypoint uses the image's existing `awk` for capacity validation and
+conversion, and `realpath` for relative model paths.
 
 ArduPilot's existing battery and motor physics reduce thrust as voltage drops
 and remove thrust below the motor model's voltage cutoff. Physical loss of
@@ -144,6 +146,6 @@ vehicle first. Firmware source, other vehicle frames, and network links are
 unchanged. Recovery requires restarting the affected simulation; no live
 recharge control is provided.
 
-With Bash and Python 3 available, run `bash tests/run-checks.sh`.
+With Bash, awk, GNU coreutils, and Python 3 available, run `bash tests/run-checks.sh`.
 These checks exercise capacity conversion and launch
 arguments without starting SITL. Flight behavior requires a built SITL image.

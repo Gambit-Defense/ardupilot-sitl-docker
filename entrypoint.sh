@@ -24,26 +24,25 @@ fi
 # Select finite physical capacity before changing parameters or launching SITL.
 COPTER_FRAME=/usr/local/share/ardupilot/copter-frame.json
 if [ "$model" = "copter" ] && [ -n "${BATTERY_CAPACITY_MAH:-}" ]; then
-  capacity_ah=$(python3 - "$BATTERY_CAPACITY_MAH" <<'PY'
-import math
-import struct
-import sys
-
-try:
-    capacity = float(sys.argv[1])
-except ValueError:
-    raise SystemExit("BATTERY_CAPACITY_MAH must be a finite number greater than 10")
-if not math.isfinite(capacity) or not 10 < capacity <= 2**31 - 1:
-    raise SystemExit("BATTERY_CAPACITY_MAH must be greater than 10 and fit BATT_CAPACITY (int32)")
-# The frame stores Ah as float32 before converting back to the int32 mAh default.
-physical_ah = struct.unpack("f", struct.pack("f", capacity / 1000))[0]
-reported_mah = struct.unpack("f", struct.pack("f", physical_ah * 1000))[0]
-if reported_mah >= 2**31:
-    raise SystemExit("BATTERY_CAPACITY_MAH rounds outside BATT_CAPACITY (int32)")
-print(capacity / 1000)
-PY
-  )
+  capacity_ah=$(LC_ALL=C awk 'BEGIN {
+    value = ENVIRON["BATTERY_CAPACITY_MAH"]
+    gsub(/^[[:space:]]+|[[:space:]]+$/, "", value)
+    invalid_separator = value ~ /(^|[^0-9])_|_([^0-9]|$)/
+    gsub(/_/, "", value)
+    # Above this boundary, float32 Ah rounds to 2147483.75 and its mAh
+    # conversion rounds to 2147483648, overflowing BATT_CAPACITY (int32).
+    max_capacity_mah = 2147483625
+    if (invalid_separator ||
+        value !~ /^[+-]?([0-9]+(\.[0-9]*)?|\.[0-9]+)([eE][+-]?[0-9]+)?$/ ||
+        value + 0 <= 10 || value + 0 > max_capacity_mah) {
+      print "BATTERY_CAPACITY_MAH must be finite, greater than 10, and fit BATT_CAPACITY (int32)" > "/dev/stderr"
+      exit 1
+    }
+    printf "%.17g\n", value / 1000
+  }')
   COPTER_FRAME=$(mktemp /tmp/copter-frame-XXXXXX.json)
+  # A successful exec retains the frame for SITL; preparation failures remove it.
+  trap 'rm -f -- "$COPTER_FRAME"' EXIT
   printf '{"battCapacityAh": %s}\n' "$capacity_ah" > "$COPTER_FRAME"
 fi
 
@@ -119,14 +118,11 @@ args=(
 if [ "$model" = "copter" ]; then
   # SITL strips leading '/' from paths. Grouped instances run one directory
   # below the launch directory; use a relative model path from either layout.
-  model_path=$(python3 - "$COPTER_FRAME" "$count" <<'PY'
-import os
-import sys
-
-base = os.getcwd() if int(sys.argv[2]) == 1 else os.path.join(os.getcwd(), "0")
-print(os.path.relpath(sys.argv[1], base))
-PY
-  )
+  model_base=$PWD
+  if [ "$count" -gt 1 ]; then
+    model_base="$PWD/0"
+  fi
+  model_path=$(realpath -m --relative-to="$model_base" -- "$COPTER_FRAME")
   # Keep '+' frame defaults (including copter.parm) while selecting the model.
   args+=(--model "+:${model_path}")
 fi
