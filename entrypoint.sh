@@ -21,6 +21,31 @@ if ! [[ "$count" =~ ^[1-9][0-9]*$ ]]; then
   exit 1
 fi
 
+# Select finite physical capacity before changing parameters or launching SITL.
+COPTER_FRAME=/usr/local/share/ardupilot/copter-frame.json
+if [ "$model" = "copter" ] && [ -n "${BATTERY_CAPACITY_MAH:-}" ]; then
+  capacity_ah=$(LC_ALL=C awk 'BEGIN {
+    value = ENVIRON["BATTERY_CAPACITY_MAH"]
+    gsub(/^[[:space:]]+|[[:space:]]+$/, "", value)
+    invalid_separator = value ~ /(^|[^0-9])_|_([^0-9]|$)/
+    gsub(/_/, "", value)
+    # Above this boundary, float32 Ah rounds to 2147483.75 and its mAh
+    # conversion rounds to 2147483648, overflowing BATT_CAPACITY (int32).
+    max_capacity_mah = 2147483625
+    if (invalid_separator ||
+        value !~ /^[+-]?([0-9]+(\.[0-9]*)?|\.[0-9]+)([eE][+-]?[0-9]+)?$/ ||
+        value + 0 <= 10 || value + 0 > max_capacity_mah) {
+      print "BATTERY_CAPACITY_MAH must be finite, greater than 10, and fit BATT_CAPACITY (int32)" > "/dev/stderr"
+      exit 1
+    }
+    printf "%.17g\n", value / 1000
+  }')
+  COPTER_FRAME=$(mktemp /tmp/copter-frame-XXXXXX.json)
+  # A successful exec retains the frame for SITL; preparation failures remove it.
+  trap 'rm -f -- "$COPTER_FRAME"' EXIT
+  printf '{"battCapacityAh": %s}\n' "$capacity_ah" > "$COPTER_FRAME"
+fi
+
 echo "↪ Spawning $count × $model"
 echo "   • Location = ${LAT:-0},${LON:-0},${ALT:-0},${DIR:-0}"
 echo
@@ -89,6 +114,18 @@ args=(
   --no-rebuild
   --speedup         "${SPEEDUP}"
 )
+
+if [ "$model" = "copter" ]; then
+  # SITL strips leading '/' from paths. Grouped instances run one directory
+  # below the launch directory; use a relative model path from either layout.
+  model_base=$PWD
+  if [ "$count" -gt 1 ]; then
+    model_base="$PWD/0"
+  fi
+  model_path=$(realpath -m --relative-to="$model_base" -- "$COPTER_FRAME")
+  # Keep '+' frame defaults (including copter.parm) while selecting the model.
+  args+=(--model "+:${model_path}")
+fi
 
 if [ "$count" -gt 1 ]; then
   args+=(
