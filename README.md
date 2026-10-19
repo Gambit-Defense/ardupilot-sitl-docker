@@ -149,3 +149,20 @@ recharge control is provided.
 With Bash, awk, GNU coreutils, and Python 3 available, run `bash tests/run-checks.sh`.
 These checks exercise capacity conversion and launch
 arguments without starting SITL. Flight behavior requires a built SITL image.
+
+
+## Private runner validation
+
+The `Private runner validation` Actions workflow builds this Dockerfile natively
+on `aws-linux-amd64` and `aws-linux-arm64` in the `gambit-aws-build` group. Each
+host has 8 vCPUs, 32 GiB RAM, 200 GiB disk, Docker and BuildKit. It runs
+`bash tests/run-checks.sh`, builds the image, and exercises the ArduCopter binary's
+help command. It does not publish images or require Nexus credentials.
+
+Only pushes or manual runs on the reviewed `ops-379-private-ci` branch are
+accepted; the workflow checks out the triggering SHA. Organization runner-group
+access restricts execution to this workflow and branch. Fork and PR events are
+not accepted. Olav Phillips / EngOps owns runner access and recovery. Jobs remove
+their own builders and images using the run ID and attempt; administrators must
+preserve other jobs' resources during recovery. Existing master image publication
+behavior is unchanged.

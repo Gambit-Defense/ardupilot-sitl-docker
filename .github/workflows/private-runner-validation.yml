@@ -1,0 +1,51 @@
+name: Private runner validation
+
+on:
+  push:
+    branches: [ops-379-private-ci]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: private-runner-validation-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  native_build:
+    name: Native SITL build (${{ matrix.arch }})
+    if: github.repository == 'Gambit-Defense/ardupilot-sitl-docker' && github.ref == 'refs/heads/ops-379-private-ci' && (github.event_name == 'push' || github.event_name == 'workflow_dispatch')
+    timeout-minutes: 90
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - arch: amd64
+            runner: aws-linux-amd64
+          - arch: arm64
+            runner: aws-linux-arm64
+    runs-on:
+      group: gambit-aws-build
+      labels: ${{ matrix.runner }}
+    env:
+      BUILDER: sitl-${{ github.run_id }}-${{ github.run_attempt }}-${{ matrix.arch }}
+      IMAGE: sitl-validation:${{ github.run_id }}-${{ github.run_attempt }}-${{ matrix.arch }}
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          ref: ${{ github.sha }}
+          persist-credentials: false
+      - name: Run repository checks
+        run: bash tests/run-checks.sh
+      - name: Build existing SITL image without publishing
+        run: |
+          set -euo pipefail
+          docker buildx create --name "$BUILDER" --driver docker-container
+          docker buildx build --builder "$BUILDER" --progress plain --load --tag "$IMAGE" .
+          docker run --rm --network none --entrypoint /home/atlas/ardupilot/build/sitl/bin/arducopter "$IMAGE" --help
+      - name: Remove job build resources
+        if: always()
+        run: |
+          docker buildx rm --force "$BUILDER" || true
+          docker image rm "$IMAGE" || true
