@@ -1,13 +1,79 @@
 name: Battery tests
-on: [push, pull_request]
+on:
+  push:
+  pull_request:
+    branches: [develop, main]
+    types: [opened, edited, reopened, synchronize]
 permissions:
   contents: read
 jobs:
   battery:
+    name: Run checks
     runs-on: ubuntu-latest
+    timeout-minutes: 10
     steps:
       - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
+          fetch-depth: 0
+          persist-credentials: false
       - uses: actions/setup-python@v5
         with:
           python-version: '3.13'
+      - name: Check changed-line whitespace
+        env:
+          EVENT_NAME: ${{ github.event_name }}
+          EXPECTED_SHA: ${{ github.event.pull_request.head.sha || github.sha }}
+          BASE_SHA: ${{ github.event.pull_request.base.sha }}
+          BEFORE_SHA: ${{ github.event.before }}
+        run: |
+          set -euo pipefail
+          require_commit() {
+            if [[ ! "$1" =~ ^[0-9a-f]{40}$ ]] || ! git cat-file -e "$1^{commit}"; then
+              printf 'Missing or invalid %s commit.\n' "$2" >&2
+              exit 1
+            fi
+          }
+          require_commit "$EXPECTED_SHA" source
+          head=$(git rev-parse --verify HEAD)
+          if [[ "$head" != "$EXPECTED_SHA" ]]; then
+            echo 'Unexpected checked-out source SHA.' >&2
+            exit 1
+          fi
+          printf 'Checked source: %s\n' "$head"
+          case "$EVENT_NAME" in
+            pull_request)
+              require_commit "$BASE_SHA" 'PR base'
+              if ! base=$(git merge-base "$BASE_SHA" "$head"); then
+                echo 'Cannot determine PR merge base.' >&2
+                exit 1
+              fi
+              ;;
+            push)
+              if [[ "$BEFORE_SHA" == 0000000000000000000000000000000000000000 ]]; then
+                if ! develop=$(git rev-parse --verify 'refs/remotes/origin/develop^{commit}'); then
+                  echo 'Missing origin/develop history for new-branch comparison.' >&2
+                  exit 1
+                fi
+                printf 'New branch baseline: %s\n' "$develop"
+                if base=$(git merge-base "$develop" "$head"); then
+                  :
+                else
+                  status=$?
+                  if [[ "$status" -ne 1 ]]; then exit "$status"; fi
+                  base=$(git hash-object -w -t tree /dev/null)
+                fi
+              else
+                require_commit "$BEFORE_SHA" 'push before'
+                base=$BEFORE_SHA
+              fi
+              ;;
+            *)
+              echo 'Unsupported check event.' >&2
+              exit 1
+              ;;
+          esac
+          printf 'Hygiene base: %s\n' "$base"
+          git diff --check "$base" "$head" --
       - run: bash tests/run-checks.sh
+      - run: python3 tests/test_pr_workflows.py
