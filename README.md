@@ -114,7 +114,6 @@ Vehicles and their corresponding models are listed below:
 ```
 ArduCopter: octa-quad|tri|singlecopter|firefly|gazebo-
     iris|calibration|hexa|heli|+|heli-compound|dodeca-
-    hexa|heli-dual|dodeca-hexa|heli-dual|hexa|heli|+|heli-compound|dodeca-
     hexa|heli-dual|coaxcopter|X|quad|y6|IrisRos|octa
 APMRover2: rover|gazebo-rover|rover-skid|calibration
 ArduSub: vectored
@@ -183,7 +182,7 @@ They do not skip Run checks. Release version reservation and review requirements
 remain separate and unchanged.
 
 Whitespace checks compare PR changes from their merge base and pushes from
- their previous commit. New branches compare from their merge base with
+their previous commit. New branches compare from their merge base with
 `origin/develop`; unrelated histories compare against an empty tree. Missing
 required history fails the check instead of silently skipping it. Only changed
 lines are checked, so existing historical whitespace need not be rewritten.
