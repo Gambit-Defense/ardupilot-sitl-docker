@@ -2,8 +2,7 @@ name: PR Title Check
 
 on:
   pull_request:
-    branches: [develop, main]
-    types: [opened, edited, reopened, synchronize, labeled, unlabeled]
+    types: [opened, edited, reopened, synchronize]
 
 concurrency:
   group: pr-title-check-${{ github.ref }}
@@ -23,12 +22,9 @@ jobs:
     needs: title
     if: ${{ always() }}
     runs-on: ubuntu-latest
-    timeout-minutes: 5
     permissions: {}
     steps:
       - name: Require successful shared title validation
         env:
           RESULT: ${{ needs.title.result }}
-        run: |
-          printf 'Shared title validation result: %s\n' "$RESULT"
-          test "$RESULT" = success
+        run: test "$RESULT" = success

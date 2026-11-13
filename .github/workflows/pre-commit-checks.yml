@@ -1,0 +1,34 @@
+name: Perform Pre-commit Checks
+run-name: "Running pre-commit checks on PR #${{ github.event.pull_request.number }}"
+
+on:
+  pull_request:
+    types: [opened, reopened, synchronize, ready_for_review]
+
+concurrency:
+  group: pre-commit-checks-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  checks:
+    name: Shared pre-commit
+    uses: Gambit-Defense/Automation/.github/workflows/pre-commit.yml@v1
+    with:
+      python-version: '3.13'
+      pre-commit-version: '4.2.0'
+
+  # Organization rules require this exact check name.
+  pre-commit:
+    name: Run checks
+    needs: checks
+    if: ${{ always() }}
+    runs-on: ubuntu-latest
+    permissions: {}
+    steps:
+      - name: Require successful shared pre-commit validation
+        env:
+          RESULT: ${{ needs.checks.result }}
+        run: test "$RESULT" = success

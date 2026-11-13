@@ -16,7 +16,7 @@ Run
 
 `docker run -it --rm ghcr.io/gambit-defense/ardupilot-sitl-docker:latest`
 
-⚠️ **DEPRECATED:** This section is obsolete and no longer maintained.: 
+⚠️ **DEPRECATED:** This section is obsolete and no longer maintained.:
 DockerHub
 ---------
 
@@ -153,51 +153,30 @@ arguments without starting SITL. Flight behavior requires a built SITL image.
 Pull request validation
 -----------------------
 
-PRs targeting `develop` or `main` use these required check names:
+PR checks use the shared workflows in
+[Gambit-Defense/Automation](https://github.com/Gambit-Defense/Automation):
 
-- **Validate PR Title** calls the shared
-  `Gambit-Defense/Automation/.github/workflows/pr-title.yml@v1` policy. The local
-  gate passes only when shared validation succeeds; failed, skipped or cancelled
-  validation is not accepted. It refreshes on opened, edited, reopened,
-  synchronize, labeled and unlabeled events.
-- **Run checks** runs changed-line Git whitespace checks, then the unchanged
-  `bash tests/run-checks.sh` entrypoint suite and
-  `python3 tests/test_pr_workflows.py` workflow regressions. It runs on pushes
-  and on opened, edited, reopened and synchronize PR events. CI uses Ubuntu and
-  Python 3.13, checks out the PR source head rather than the synthetic merge
-  commit, and logs the tested source and comparison SHAs.
+- **Validate PR Title** calls `pr-title.yml@v1` on opened, edited, reopened and
+  synchronize events. Accepted titles and release exceptions follow the shared
+  policy.
+- **Run checks** calls `pre-commit.yml@v1` on opened, reopened, synchronize and
+  ready-for-review events, using Python 3.13 and pre-commit 4.2.0. The required
+  check passes only when the shared validation succeeds.
 
-Titles use `<type>[optional scope][optional !]: <subject> (JIRA-KEY)`;
-for example, `fix: repair startup (OPS-408)` or
-`fix(api)!: repair startup (OPS-408)`. Allowed types are `feat`, `fix`, `deps`,
-`chore`, `docs`, `refactor` and `test`. A scope is nonempty and enclosed in
-parentheses. The ticket suffix is uppercase project letters, a hyphen and
-one or more digits; use literal `NA` when no ticket applies, for example
-`chore: tidy logging (NA)`. Validation checks syntax, not Jira ticket existence.
+`.pre-commit-config.yaml` checks all tracked files for YAML, JSON, Python and
+Bash syntax, trailing whitespace and final newlines. It also runs the existing
+battery and entrypoint checks through `bash tests/run-checks.sh`. The separate
+battery workflow retains those native checks on pushes and pull requests.
 
-The shared policy exempts exact labels `bot` and `dependabot`, and head branch
-prefixes `release-please--`, `comms-bump/`, `scribe-bump/`, `warden-bump/` and
-`backport/`. These are metadata-based exceptions, not author authentication.
-They do not skip Run checks. Release version reservation and review requirements
-remain separate and unchanged.
-
-Whitespace checks compare PR changes from their merge base and pushes from
-their previous commit. New branches compare from their merge base with
-`origin/develop`; unrelated histories compare against an empty tree. Missing
-required history fails the check instead of silently skipping it. Only changed
-lines are checked, so existing historical whitespace need not be rewritten.
-
-For local validation, use Bash, awk, GNU coreutils, Git and Python 3:
+With Python 3.13, Bash, awk and GNU coreutils available, run the same checks
+locally:
 
 ```sh
-bash tests/run-checks.sh
-python3 tests/test_pr_workflows.py
+python3 -m pip install pre-commit==4.2.0
+pre-commit run --all-files --show-diff-on-failure
 ```
 
-The workflow regressions execute the actual local shell steps in temporary Git
-repositories and test the title gate's dependency-result handling. They do not
-execute the upstream title validator or prove hosted PR-event behavior. Confirm
-those separately at the exact tested revision, including title edits, label
-addition/removal, release exceptions, and an intentional feature-test failure
-followed by a restored successful Run checks result. Local launch tests do not
-establish real-Docker or flight acceptance.
+Run `pre-commit install` to enable the hooks locally. The checks validate source
+and launch arguments without starting SITL; flight behavior requires a built
+SITL image. Hosted PR-event behavior and human review remain separate acceptance
+checks.

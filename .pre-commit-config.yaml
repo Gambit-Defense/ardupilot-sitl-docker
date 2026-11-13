@@ -1,0 +1,22 @@
+repos:
+  - repo: https://github.com/pre-commit/pre-commit-hooks
+    rev: v6.0.0
+    hooks:
+      - id: check-yaml
+      - id: check-json
+      - id: check-ast
+      - id: trailing-whitespace
+      - id: end-of-file-fixer
+  - repo: local
+    hooks:
+      - id: bash-syntax
+        name: Check Bash syntax
+        entry: bash -c 'for file in "$@"; do bash -n "$file" || exit; done' --
+        language: system
+        types: [shell]
+      - id: battery-tests
+        name: Run battery and entrypoint tests
+        entry: bash tests/run-checks.sh
+        language: system
+        pass_filenames: false
+        always_run: true
