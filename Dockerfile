@@ -68,6 +68,7 @@ ENV PATH="${PATH}:/home/atlas/.local/bin"
 
 # Add entrypoint script
 COPY copter-frame.json /usr/local/share/ardupilot/copter-frame.json
+COPY quadplane.parm /usr/local/share/ardupilot/quadplane.parm
 COPY entrypoint.sh /usr/local/bin/entrypoint.sh
 RUN sudo chmod +x /usr/local/bin/entrypoint.sh
 

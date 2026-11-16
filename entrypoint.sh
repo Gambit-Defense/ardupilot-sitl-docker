@@ -125,6 +125,9 @@ if [ "$model" = "copter" ]; then
   model_path=$(realpath -m --relative-to="$model_base" -- "$COPTER_FRAME")
   # Keep '+' frame defaults (including copter.parm) while selecting the model.
   args+=(--model "+:${model_path}")
+elif [ "$model" = "plane_vtol" ]; then
+  # Advertise the QuadPlane identity from the first autopilot heartbeat.
+  args+=(--add-param-file /usr/local/share/ardupilot/quadplane.parm)
 fi
 
 if [ "$count" -gt 1 ]; then

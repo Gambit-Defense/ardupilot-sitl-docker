@@ -124,6 +124,18 @@ ArduPlane: gazebo-zephyr|CRRCSim|last_letter|plane-
     |quadplane-cl84|jsbsim
 ```
 
+QuadPlane identity
+------------------
+
+`VEHICLES=plane_vtol:1` selects the `quadplane` frame and loads the packaged
+`quadplane.parm` after the firmware defaults. It sets `Q_MAV_TYPE=20`
+(`MAV_TYPE_VTOL_QUADROTOR`) so the initial heartbeat identifies a VTOL to
+Neuron and other MAVLink consumers. Grouped QuadPlanes use the same defaults.
+Other vehicle types do not load this parameter file. This preset requires
+ArduPlane with `Q_MAV_TYPE` support; heartbeat behavior is verified on 4.6.3.
+Use a fresh simulator instance without saved parameter overrides to apply
+the default at startup.
+
 Copter battery capacity
 -----------------------
 
