@@ -62,14 +62,34 @@ To run the image:
 Building and Pushing to GHCR
 ----------------------------
 
-Building
+The **Build and Publish Docker Image** workflow builds the existing Dockerfile on
+native AMD64 (`ubuntu-24.04`) and ARM64 (`ubuntu-24.04-arm`) runners. Both builds use
+the same repository commit and one resolved ArduPilot commit from the Dockerfile's
+`VERSION_TAG`. Each runner checks the launcher, executes all four simulator
+binaries, and requires a live copter heartbeat before publishing its image.
 
-`docker build --tag ghcr.io/gambit-defense/ardupilot-sitl-docker .`
+Pull requests targeting `develop` or `master` run both builds. Same-repository PRs
+publish a two-platform test tag after both native checks pass:
+`pr-<number>.<source-prefix>-<run-id>-<attempt>`. Fork PRs run the builds and startup
+checks. Manual runs publish `build-<source-prefix>-<run-id>-<attempt>` tags. The run
+summary contains the exact `docker pull` command. Pushes to `master` also update
+`latest` after both architectures pass.
 
-Pushing to GHCR
+Startup evidence is saved in the `native-smoke-amd64` and `native-smoke-arm64`
+artifacts. These checks cover binary execution and copter startup; flight
+qualification runs in Praxis using the published image index.
 
-`docker push ghcr.io/gambit-defense/ardupilot-sitl-docker:latest`
+With Docker running natively on a supported Linux architecture, build and check
+the image locally (use `linux/arm64` on an ARM64 Docker host):
 
+```bash
+docker build --platform linux/amd64 --tag ardupilot-sitl:local .
+bash tests/smoke-image.sh ardupilot-sitl:local linux/amd64 /tmp/ardupilot-smoke
+```
+
+The smoke check uses the image's installed MAVLink tools and an isolated
+container network. It saves image metadata, binary output, the heartbeat, and
+simulator logs in the evidence directory, then removes its container.
 
 Options
 -------
@@ -178,5 +198,4 @@ pre-commit run --all-files --show-diff-on-failure
 
 Run `pre-commit install` to enable the hooks locally. The checks validate source
 and launch arguments without starting SITL; flight behavior requires a built
-SITL image. Hosted PR-event behavior and human review remain separate acceptance
-checks.
+SITL image.
