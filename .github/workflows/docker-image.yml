@@ -2,31 +2,178 @@ name: Build and Publish Docker Image
 
 on:
   push:
-    branches: [ "master" ]
+    branches: [master]
   pull_request:
-    branches: [ "master" ]
+    branches: [develop, master]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: simulator-image-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: false
 
 jobs:
+  prepare:
+    runs-on: ubuntu-latest
+    outputs:
+      source: ${{ steps.selection.outputs.source }}
+      upstream: ${{ steps.selection.outputs.upstream }}
+      image: ${{ steps.selection.outputs.image }}
+      tag: ${{ steps.selection.outputs.tag }}
+      publish: ${{ steps.selection.outputs.publish }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
+          persist-credentials: false
+      - name: Freeze source and select a run-specific image tag
+        id: selection
+        env:
+          PR_NUMBER: ${{ github.event.pull_request.number }}
+          PR_REPOSITORY: ${{ github.event.pull_request.head.repo.full_name }}
+        run: |
+          source=$(git rev-parse HEAD)
+          version=$(sed -n 's/^ARG VERSION_TAG=//p' Dockerfile)
+          test -n "$version"
+          git init --bare "$RUNNER_TEMP/ardupilot-source"
+          git -C "$RUNNER_TEMP/ardupilot-source" fetch --depth 1 --filter=blob:none \
+            https://github.com/ArduPilot/ardupilot.git "$version"
+          upstream=$(git -C "$RUNNER_TEMP/ardupilot-source" rev-parse FETCH_HEAD)
+          tag="build-${source:0:12}-${GITHUB_RUN_ID}-${GITHUB_RUN_ATTEMPT}"
+          publish=true
+          if [[ "$GITHUB_EVENT_NAME" == pull_request ]]; then
+            tag="pr-${PR_NUMBER}.${source:0:12}-${GITHUB_RUN_ID}-${GITHUB_RUN_ATTEMPT}"
+            if [[ "$PR_REPOSITORY" != "$GITHUB_REPOSITORY" ]]; then
+              publish=false
+            fi
+          fi
+          echo "source=$source" >> "$GITHUB_OUTPUT"
+          echo "upstream=$upstream" >> "$GITHUB_OUTPUT"
+          echo "image=ghcr.io/${GITHUB_REPOSITORY,,}" >> "$GITHUB_OUTPUT"
+          echo "tag=$tag" >> "$GITHUB_OUTPUT"
+          echo "publish=$publish" >> "$GITHUB_OUTPUT"
+          printf 'Simulator source: `%s`\n\nArduPilot source: `%s` (`%s`)\n' \
+            "$source" "$upstream" "$version" >> "$GITHUB_STEP_SUMMARY"
 
   build:
-
-    runs-on: ubuntu-latest
-
+    name: Native image (${{ matrix.architecture }})
+    needs: prepare
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - architecture: amd64
+            runner: ubuntu-24.04
+          - architecture: arm64
+            runner: ubuntu-24.04-arm
+    runs-on: ${{ matrix.runner }}
+    timeout-minutes: 120
+    permissions:
+      contents: read
+      packages: write
+    env:
+      PLATFORM: linux/${{ matrix.architecture }}
+      IMAGE: ${{ needs.prepare.outputs.image }}
+      TAG: ${{ needs.prepare.outputs.tag }}-${{ matrix.architecture }}
+      SOURCE: ${{ needs.prepare.outputs.source }}
+      UPSTREAM: ${{ needs.prepare.outputs.upstream }}
     steps:
-    - uses: actions/checkout@v4
-
-    - name: Log in to GHCR
-      if: github.event_name == 'push'
-      uses: docker/login-action@v3
-      with:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ needs.prepare.outputs.source }}
+          persist-credentials: false
+      - name: Check launcher behavior
+        run: bash tests/run-checks.sh
+      - name: Require a native Docker host
+        run: |
+          architecture=$(docker info --format '{{.Architecture}}')
+          case "$architecture" in
+            x86_64) architecture=amd64 ;;
+            aarch64) architecture=arm64 ;;
+          esac
+          test "$(docker info --format '{{.OSType}}')/$architecture" = "$PLATFORM"
+      - name: Reclaim hosted-runner disk for the simulator build
+        run: |
+          sudo rm -rf /usr/local/lib/android /usr/share/dotnet /opt/ghc
+          df -h /
+      - name: Build the native simulator
+        run: |
+          docker build --platform "$PLATFORM" --build-arg "VERSION_TAG=$UPSTREAM" \
+            --label "org.opencontainers.image.source=https://github.com/$GITHUB_REPOSITORY" \
+            --label "org.opencontainers.image.revision=$SOURCE" \
+            --label "ai.gambit.ardupilot.revision=$UPSTREAM" \
+            --tag "$IMAGE:$TAG" .
+      - name: Check native binaries and copter heartbeat
+        run: bash tests/smoke-image.sh "$IMAGE:$TAG" "$PLATFORM" "$RUNNER_TEMP/smoke" "$UPSTREAM"
+      - name: Log in to GHCR
+        if: needs.prepare.outputs.publish == 'true'
+        uses: docker/login-action@v3
+        with:
           registry: ghcr.io
           username: ${{ github.actor }}
-          password: '${{ github.token }}'
-          logout: false
+          password: ${{ github.token }}
+      - name: Publish the tested native image
+        if: needs.prepare.outputs.publish == 'true'
+        run: |
+          docker push "$IMAGE:$TAG"
+          mkdir -p "$RUNNER_TEMP/digests"
+          docker image inspect "$IMAGE:$TAG" --format '{{json .RepoDigests}}' \
+            | jq -er --arg prefix "$IMAGE@" \
+              '[.[] | select(startswith($prefix))] | if length == 1 then .[0] else error("Ambiguous image digest") end' \
+            > "$RUNNER_TEMP/digests/${{ matrix.architecture }}.txt"
+      - uses: actions/upload-artifact@v4
+        if: needs.prepare.outputs.publish == 'true'
+        with:
+          name: image-digest-${{ matrix.architecture }}
+          path: ${{ runner.temp }}/digests
+          if-no-files-found: error
+          retention-days: 14
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: native-smoke-${{ matrix.architecture }}
+          path: ${{ runner.temp }}/smoke
+          if-no-files-found: ignore
+          retention-days: 14
 
-    - name: Build the Docker image
-      run: docker build . --file Dockerfile --tag ghcr.io/gambit-defense/ardupilot-sitl-docker:latest
-
-    - name: Push Docker image to GHCR
-      if: github.event_name == 'push'
-      run: docker push ghcr.io/gambit-defense/ardupilot-sitl-docker:latest
+  publish:
+    name: Publish both native architectures
+    needs: [prepare, build]
+    if: needs.prepare.outputs.publish == 'true'
+    runs-on: ubuntu-latest
+    permissions:
+      packages: write
+    env:
+      IMAGE: ${{ needs.prepare.outputs.image }}
+      TAG: ${{ needs.prepare.outputs.tag }}
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          pattern: image-digest-*
+          merge-multiple: true
+          path: digests
+      - uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ github.token }}
+      - name: Assemble and verify the two-platform image index
+        run: |
+          amd64=$(cat digests/amd64.txt)
+          arm64=$(cat digests/arm64.txt)
+          for reference in "$amd64" "$arm64"; do
+            [[ "$reference" == "$IMAGE@sha256:"* ]]
+          done
+          docker buildx imagetools create --tag "$IMAGE:$TAG" "$amd64" "$arm64"
+          docker buildx imagetools inspect "$IMAGE:$TAG" --raw > index.json
+          jq -e --arg amd64 "${amd64#*@}" --arg arm64 "${arm64#*@}" \
+            '.manifests | length == 2 and
+              any(.[]; .platform.os == "linux" and .platform.architecture == "amd64" and .digest == $amd64) and
+              any(.[]; .platform.os == "linux" and .platform.architecture == "arm64" and .digest == $arm64)' index.json
+          printf 'Native AMD64 and ARM64 startup checks passed.\n\n`docker pull %s:%s`\n' \
+            "$IMAGE" "$TAG" >> "$GITHUB_STEP_SUMMARY"
+      - name: Update the master image channel
+        if: github.event_name == 'push' && github.ref == 'refs/heads/master'
+        run: docker buildx imagetools create --tag "$IMAGE:latest" "$(cat digests/amd64.txt)" "$(cat digests/arm64.txt)"
