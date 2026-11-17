@@ -2,7 +2,7 @@ FROM ubuntu:20.04
 
 ARG VERSION_TAG=ArduPilot-4.6
 
-# Install git 
+# Install git
 RUN apt-get update && apt-get install -y git; git config --global url."https://github.com/".insteadOf git://github.com/
 
 # Trick to get apt-get to not prompt for timezone in tzdata
@@ -42,7 +42,7 @@ RUN USER=atlas DEBIAN_FRONTEND=noninteractive Tools/environment_install/install-
 RUN ./waf distclean
 RUN ./waf configure --board sitl
 RUN ./waf copter
-RUN ./waf rover 
+RUN ./waf rover
 RUN ./waf plane
 RUN ./waf sub
 
@@ -72,4 +72,4 @@ COPY entrypoint.sh /usr/local/bin/entrypoint.sh
 RUN sudo chmod +x /usr/local/bin/entrypoint.sh
 
 # Drop the default ENTRYPOINT, and use our script instead
-ENTRYPOINT ["/usr/local/bin/entrypoint.sh"] 
+ENTRYPOINT ["/usr/local/bin/entrypoint.sh"]

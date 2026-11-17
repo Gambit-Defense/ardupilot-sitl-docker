@@ -16,7 +16,7 @@ Run
 
 `docker run -it --rm ghcr.io/gambit-defense/ardupilot-sitl-docker:latest`
 
-⚠️ **DEPRECATED:** This section is obsolete and no longer maintained.: 
+⚠️ **DEPRECATED:** This section is obsolete and no longer maintained.:
 DockerHub
 ---------
 
@@ -169,3 +169,33 @@ recharge control is provided.
 With Bash, awk, GNU coreutils, and Python 3 available, run `bash tests/run-checks.sh`.
 These checks exercise capacity conversion and launch
 arguments without starting SITL. Flight behavior requires a built SITL image.
+
+Pull request validation
+-----------------------
+
+PR checks use the shared workflows in
+[Gambit-Defense/Automation](https://github.com/Gambit-Defense/Automation):
+
+- **Validate PR Title** calls `pr-title.yml@v1` on opened, edited, reopened and
+  synchronize events. Accepted titles and release exceptions follow the shared
+  policy.
+- **Run checks** calls `pre-commit.yml@v1` on opened, reopened, synchronize and
+  ready-for-review events, using Python 3.13 and pre-commit 4.2.0. The required
+  check passes only when the shared validation succeeds.
+
+`.pre-commit-config.yaml` checks all tracked files for YAML, JSON, Python and
+Bash syntax, trailing whitespace and final newlines. It also runs the existing
+battery and entrypoint checks through `bash tests/run-checks.sh`. The separate
+battery workflow retains those native checks on pushes and pull requests.
+
+With Python 3.13, Bash, awk and GNU coreutils available, run the same checks
+locally:
+
+```sh
+python3 -m pip install pre-commit==4.2.0
+pre-commit run --all-files --show-diff-on-failure
+```
+
+Run `pre-commit install` to enable the hooks locally. The checks validate source
+and launch arguments without starting SITL; flight behavior requires a built
+SITL image.

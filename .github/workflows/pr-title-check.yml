@@ -1,0 +1,30 @@
+name: PR Title Check
+
+on:
+  pull_request:
+    types: [opened, edited, reopened, synchronize]
+
+concurrency:
+  group: pr-title-check-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  pull-requests: read
+
+jobs:
+  title:
+    name: Shared PR title
+    uses: Gambit-Defense/Automation/.github/workflows/pr-title.yml@v1
+
+  # Organization rules require this exact check name.
+  validate-pr-title:
+    name: Validate PR Title
+    needs: title
+    if: ${{ always() }}
+    runs-on: ubuntu-latest
+    permissions: {}
+    steps:
+      - name: Require successful shared title validation
+        env:
+          RESULT: ${{ needs.title.result }}
+        run: test "$RESULT" = success
