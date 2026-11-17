@@ -106,4 +106,22 @@ test ! -e "$(cat "$ALLOCATION")"
 run SIM_EXIT=23
 test "$status" -eq 23
 test -f "$CAPTURE"
+
+# Each QuadPlane receives its heartbeat defaults before SITL starts, including
+# grouped instances; other airframes keep their existing parameter sources.
+for count in 1 3; do
+  for model in copter rover plane_fw plane_vtol; do
+    run "VEHICLES=$model:$count"
+    if [ "$status" -ne 0 ]; then cat "$temporary/output" >&2; exit 1; fi
+    if [ "$model" = plane_vtol ]; then
+      grep -A1 -x -- '--add-param-file' "$CAPTURE" | tail -1 > "$temporary/defaults"
+      test "$(cat "$temporary/defaults")" = /usr/local/share/ardupilot/quadplane.parm
+      awk '$1 == "Q_MAV_TYPE" { count++; valid = ($2 == 20) }
+        END { exit !(count == 1 && valid) }' "$repo/quadplane.parm"
+    elif grep -q -x -- '--add-param-file' "$CAPTURE"; then
+      echo "Unexpected QuadPlane defaults for $model" >&2
+      exit 1
+    fi
+  done
+done
 echo 'APM shell preparation checks passed'
